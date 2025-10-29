@@ -37,8 +37,8 @@ class DeployManager:
         self.project_root = Path(__file__).parent.parent.parent
         self.backend_dir = self.project_root / "backend"
         self.deploy_dir = self.backend_dir / "scripts" / "deploy"
-        self.compose_file = self.project_root / "docker-compose.prod.yml"
-        self.env_file = self.project_root / ".env.production"
+        self.compose_file = self.project_root / "docker-compose.yml"
+        self.env_file = self.project_root / ".env"
         self.compose_project = os.getenv("COMPOSE_PROJECT_NAME", "quadradois")
         self.compose_cmd = (
             f"docker compose --project-name {self.compose_project} -f {self.compose_file}"
@@ -105,7 +105,7 @@ class DeployManager:
         """Verifica se o arquivo .env existe"""
         if self.env_file.exists():
             return {'status': True, 'message': 'Found'}
-        return {'status': False, 'message': 'Missing (.env.production not found)'}
+        return {'status': False, 'message': 'Missing (.env not found)'}
 
     def _check_dockerfile(self):
         """Verifica se o Dockerfile existe"""
@@ -119,7 +119,7 @@ class DeployManager:
         """Verifica se o docker-compose existe"""
         if self.compose_file.exists():
             return {'status': True, 'message': 'Found'}
-        return {'status': False, 'message': 'Missing (docker-compose.prod.yml not found)'}
+        return {'status': False, 'message': 'Missing (docker-compose.yml not found)'}
 
     def deploy(self, environment='staging', skip_checks=False):
         """Executa o deploy completo"""

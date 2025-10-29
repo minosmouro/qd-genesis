@@ -10,7 +10,7 @@ COPY package*.json ./
 # Instalar dependências
 RUN npm config set strict-ssl false && npm ci --no-verify-ssl && npm config set strict-ssl true
 
-# Copiar código fonte e arquivo .env.production
+# Copiar código fonte e arquivo .env
 COPY . .
 
 # Build da aplicação

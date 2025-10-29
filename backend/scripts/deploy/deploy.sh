@@ -10,10 +10,10 @@ ACTION=${2:-deploy}
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/backend"
-COMPOSE_FILE="$PROJECT_ROOT/docker-compose.prod.yml"
+COMPOSE_FILE="$PROJECT_ROOT/docker-compose.yml"
 COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-quadradois}
 COMPOSE_CMD="docker compose --project-name $COMPOSE_PROJECT_NAME -f $COMPOSE_FILE"
-ENV_FILE="$PROJECT_ROOT/.env.production"
+ENV_FILE="$PROJECT_ROOT/.env"
 
 echo "🚀 Gandalf Backend - Deploy to $ENVIRONMENT"
 echo "Action: $ACTION"
@@ -46,7 +46,7 @@ load_env_file() {
         source "$ENV_FILE"
         set +a
     else
-        warn ".env.production não encontrado em $PROJECT_ROOT — variáveis devem ser fornecidas manualmente"
+        warn ".env não encontrado em $PROJECT_ROOT — variáveis devem ser fornecidas manualmente"
     fi
 }
 
@@ -65,7 +65,7 @@ check_prerequisites() {
     fi
 
     if [ ! -f "$COMPOSE_FILE" ]; then
-        error "docker-compose.prod.yml not found in $PROJECT_ROOT"
+        error "docker-compose.yml not found in $PROJECT_ROOT"
         exit 1
     fi
 

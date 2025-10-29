@@ -227,9 +227,9 @@ else:
     return jsonify({'message': result['message']}), result['status']
 ```
 
-### **Validando Dados de Entrada**
-```python
-from properties.validators.property_validator import PropertyValidator
+```bash
+docker compose up -d
+```
 
 is_valid, error = PropertyValidator.validate_create_data(data)
 if not is_valid:
@@ -273,8 +273,8 @@ return jsonify(response), 200
 
 #### **3. Docker & Containers** ✅
 - **Dockerfile.prod**: Otimizado para produção
-- **docker-compose.prod.yml**: Stack completo (app + postgres + redis + nginx)
-- **docker-compose.staging.yml**: Ambiente de staging isolado
+- **docker-compose.yml**: Stack completo (app + postgres + redis + nginx)
+- **docker-compose.dev.yml**: Ambiente de desenvolvimento com hot reload
 
 #### **4. Configuração de Produção** ✅
 - **nginx.conf**: Proxy reverso com segurança e performance
@@ -436,7 +436,7 @@ bash scripts/deploy/deploy.sh production rollback
 
 # Ou manual
 make prod-stop
-docker-compose -f docker-compose.prod.yml up -d
+docker compose up -d
 ```
 
 ### **Próximos Passos**

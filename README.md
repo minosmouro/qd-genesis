@@ -26,8 +26,8 @@ git clone <seu-repositorio> /var/www/quadradois
 cd /var/www/quadradois
 
 # 2. Configure as variáveis de ambiente (nunca commit valores reais)
-cp .env.production.example .env.production
-nano .env.production  # Preencha com credenciais seguras (AWS mantidas)
+cp .env.example .env
+nano .env  # Preencha com credenciais seguras (AWS mantidas)
 
 # 3. Execute o deploy
 python backend/scripts/deploy/manage.py check
@@ -36,7 +36,7 @@ python backend/scripts/deploy/manage.py deploy --env production
 
 ## 📦 Estrutura do Projeto
 
-```
+```text
 quadradois/
 ├── backend/              # API Flask + Celery
 │   ├── api/             # Endpoints REST
@@ -57,17 +57,18 @@ quadradois/
 ├── backend/scripts/deploy/  # Ferramentas de deploy automatizado
 │   ├── deploy.sh            # Script principal (Linux)
 │   └── manage.py            # CLI cross-platform para deploy/backup
-├── docker-compose.prod.yml  # Orquestração produção
-└── .env.production      # Arquivo real (NÃO versionado) baseado no template
+├── docker-compose.yml   # Orquestração (produção)
+├── docker-compose.dev.yml  # Stack de desenvolvimento (opcional)
+└── .env                 # Arquivo real (NÃO versionado) baseado no template
 ```
 
 ## 🔧 Desenvolvimento Local
 
-1. Copie o template de variáveis de ambiente seguro para uso local:
+1. Copie o template de variáveis de ambiente para uso local ou produção:
 
    ```bash
-   cp .env.dev .env
-   # edite a cópia se quiser alterar usuário/senha do banco etc.
+   cp .env.example .env
+   # edite a cópia com credenciais do ambiente desejado
    ```
 
    > ⚠️ Nunca reutilize as chaves/ferramentas de produção no ambiente de desenvolvimento.
@@ -121,10 +122,10 @@ python backend/scripts/deploy/manage.py backup --env production
 ./scripts/rollback.sh 2025-10-24_14-30-00
 
 # Restart de serviços
-docker-compose -f docker-compose.prod.yml restart backend
+docker compose restart backend
 
 # Ver status dos containers
-docker-compose -f docker-compose.prod.yml ps
+docker compose ps
 ```
 
 ## 🔐 Segurança
