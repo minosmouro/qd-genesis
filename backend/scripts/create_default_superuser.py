@@ -29,7 +29,7 @@ try:
         # Dados do superusuário
         email = "consultor.eliezer@gmail.com"
         username = "consultor.eliezer"
-        password = "@Epbaa090384!@#$"
+        password = os.environ.get("DEFAULT_SUPERUSER_PASSWORD", "ChangeMe123!")
 
         try:
             # Criar aplicação

@@ -1,9 +1,10 @@
+import os
 import requests
 import json
 
 BASE_URL = "http://localhost:5000"
 USERNAME = "consultor.eliezer"
-PASSWORD = "@Epbaa090384!@#$"
+PASSWORD = os.environ.get("CRM_DEFAULT_PASSWORD", "ChangeMe123!")
 
 response = requests.post(
     f"{BASE_URL}/auth/login",

@@ -1,10 +1,11 @@
 import argparse
+import os
 import requests
 import sys
 
 BASE_URL = "http://localhost:5000"
 USERNAME = "consultor.eliezer"
-PASSWORD = "@Epbaa090384!@#$"
+PASSWORD = os.environ.get("CRM_DEFAULT_PASSWORD", "ChangeMe123!")
 
 
 def login() -> str:

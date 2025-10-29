@@ -14,7 +14,7 @@ from models import User, Tenant
 from werkzeug.security import generate_password_hash
 
 EMAIL = 'consultor.eliezer@gmail.com'
-PASSWORD = '@Epbaa090384!@#$'
+PASSWORD = os.environ.get('CRM_DEFAULT_PASSWORD', 'ChangeMe123!')
 USERNAME = EMAIL.split('@')[0]
 TENANT_NAME = 'tenant_dev'
 

@@ -18,7 +18,7 @@ from werkzeug.security import generate_password_hash
 
 # Credenciais do Super Admin
 ADMIN_EMAIL = 'consultor.eliezer@gmail.com'
-ADMIN_PASSWORD = '@Epbaa090384!@#$'
+ADMIN_PASSWORD = os.environ.get('SUPER_ADMIN_PASSWORD', 'ChangeMe123!')
 ADMIN_USERNAME = 'admin'
 TENANT_NAME = 'Quadradois'
 

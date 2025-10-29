@@ -166,7 +166,7 @@ docker-compose -f docker-compose.prod.yml ps
 
 ```bash
 # Database
-DATABASE_URL=postgresql://user:pass@postgres:5432/gandalf_db
+DATABASE_URL=postgresql://<db_user>:<db_password>@<db_host>:<db_port>/<db_name>
 
 # Security
 SECRET_KEY=<generate-with-secrets.token_hex(32)>
@@ -174,13 +174,13 @@ JWT_SECRET_KEY=<generate-with-secrets.token_hex(32)>
 FERNET_KEY=<generate-with-Fernet.generate_key()>
 
 # AWS S3
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-AWS_S3_BUCKET_NAME=quadra-fotos
-AWS_S3_REGION=us-east-2
+AWS_ACCESS_KEY_ID=<your-aws-access-key-id>
+AWS_SECRET_ACCESS_KEY=<your-aws-secret-access-key>
+AWS_S3_BUCKET_NAME=<your-s3-bucket-name>
+AWS_S3_REGION=<aws-region>
 
 # Redis
-REDIS_URL=redis://redis:6379/0
+REDIS_URL=redis://<redis_host>:<redis_port>/<db_index>
 ```
 
 ## 🆘 Suporte

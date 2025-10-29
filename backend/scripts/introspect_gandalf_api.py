@@ -1,6 +1,7 @@
 """
 Script para obter o schema completo da API Gandalf/CanalPro via introspecção GraphQL
 """
+import os
 import requests
 import json
 import sys
@@ -8,7 +9,7 @@ import sys
 # Obter token válido
 BASE_URL = "http://localhost:5000"
 USERNAME = "consultor.eliezer"
-PASSWORD = "@Epbaa090384!@#$"
+PASSWORD = os.environ.get("CRM_DEFAULT_PASSWORD", "ChangeMe123!")
 
 def get_local_token():
     """Obter token JWT do sistema local"""

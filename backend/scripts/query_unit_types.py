@@ -13,6 +13,10 @@ sys.path.insert(0, backend_dir)
 import requests
 import json
 
+DEFAULT_USERNAME = os.environ.get("CRM_DEFAULT_USERNAME", "consultor.eliezer")
+DEFAULT_PASSWORD = os.environ.get("CRM_DEFAULT_PASSWORD", "ChangeMe123!")
+DEFAULT_DEVICE_ID = os.environ.get("CRM_DEFAULT_DEVICE_ID", "test-device-123")
+
 def get_jwt_token(username, password, device_id):
     """Obtém token JWT da API local"""
     url = "http://localhost:5000/api/auth/login"
@@ -38,12 +42,12 @@ def query_unit_types(token=None):
     
     if not token:
         print("🔐 Obtendo token JWT...")
-        token = get_jwt_token('consultor.eliezer', '@Epbaa090384!@#$', 'c3f8e9d5-7a4c-4e7a-8a3f-5d6c8e9a7c5f')
-        
+        token = get_jwt_token(DEFAULT_USERNAME, DEFAULT_PASSWORD, DEFAULT_DEVICE_ID)
+
         if not token:
             print("❌ Erro ao obter token")
             return None
-        
+
         print(f"✅ Token obtido: {token[:50]}...")
     else:
         print(f"✅ Usando token fornecido: {token[:50]}...")
@@ -130,9 +134,9 @@ if __name__ == '__main__':
     print("=" * 80)
     
     # Token fornecido pelo usuário
-    gandalf_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NjA1Nzk5NzcsInVzZXJfbmFtZSI6ImVsaWV6ZXJwYXNzb3NtZHRAZ21haWwuY29tIiwiYXV0aG9yaXRpZXMiOlsiUk9MRV9TSVRFIiwiU0lURSJdLCJqdGkiOiI1M2VhMzhlOS1mY2ViLTRiMDUtYjVhMi0zNWM5OTRmMDEwNWMiLCJjbGllbnRfaWQiOiJjYW5hbHBybyIsInNjb3BlIjpbInJlYWQiXX0.DQfdU9g5xgeNCHxbNNZbI22tCU1bNunYd53NI1uYo_M"
+    gandalf_token = os.environ.get("GANDALF_API_TOKEN", "")
     
-    result = query_unit_types(token=gandalf_token)
+    result = query_unit_types(token=gandalf_token or None)
     
     if result:
         print(f"\n✅ Consulta concluída! {len(result)} unitTypes encontrados.")
