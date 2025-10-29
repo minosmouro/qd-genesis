@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
 import StatusPill from '@/components/ui/StatusPill';
 import toast from 'react-hot-toast';
 import Modal from '@/components/ui/Modal';
-import { PropertyCreateProvider } from '@/contexts/PropertyCreateContext';
+import { PropertyCreateProvider, normalizeInitialData } from '@/contexts/PropertyCreateContext';
 import PropertyCreateStepper from '@/components/property/PropertyCreateStepper';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -204,7 +204,7 @@ const PropertyDetailPage: React.FC = () => {
     return (
       <PropertyCreateProvider
         totalSteps={7}
-        initialData={property}
+  initialData={normalizeInitialData(property)}
         isEditMode={true}
         propertyId={Number(id)}
       >

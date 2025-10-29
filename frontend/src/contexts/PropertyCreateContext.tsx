@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
-import { PropertyFormData } from '@/types';
+import type { Property, PropertyFormData } from '@/types';
 import { FEATURES_MAP } from '@/constants/condoFeatures';
 
 // 1. Definição dos Tipos
@@ -123,13 +123,17 @@ const PROPERTY_TYPE_LABEL_TO_CODE: Record<string, string> = {
 
 // Nova função utilitária: normaliza dados recebidos do backend para o formato esperado pelo form
 export const normalizeInitialData = (
-  initial: Partial<PropertyFormData> = {}
+  initial: Partial<PropertyFormData> | Partial<Property> = {}
 ): Partial<PropertyFormData> => {
-  const normalized: Partial<PropertyFormData> = { ...initial };
+  const normalized: Partial<PropertyFormData> = {
+    ...(initial as Partial<PropertyFormData>),
+  };
+  const source = initial as Partial<PropertyFormData>;
+  const safe = initial as Partial<PropertyFormData> & Partial<Property>;
   
   // Normalizar property_type: converter label para código se necessário
-  if (initial.property_type) {
-    const propertyType = initial.property_type;
+  if (safe.property_type) {
+    const propertyType = safe.property_type;
     
     // 1. Se o valor for um label (texto), converter para código
     if (PROPERTY_TYPE_LABEL_TO_CODE[propertyType]) {
@@ -142,54 +146,54 @@ export const normalizeInitialData = (
     }
   }
 
-  const addr = initial.address || ({} as any);
+  const addr = source.address || ({} as any);
   const condo = (initial as any).condominium || ({} as any);
 
   // Mapear variantes de endereço para os campos planos do formulário
   normalized.bairro =
-    initial.bairro ??
+    source.bairro ??
     (addr.neighborhood as any) ??
-    (initial.address as any)?.neighborhood;
+  (source.address as any)?.neighborhood;
   normalized.cidade =
-    initial.cidade ?? (addr.city as any) ?? (initial.address as any)?.city;
+    source.cidade ?? (addr.city as any) ?? (source.address as any)?.city;
   normalized.cep =
-    initial.cep ?? (addr.zip_code as any) ?? (initial.address as any)?.zip_code;
+    source.cep ?? (addr.zip_code as any) ?? (source.address as any)?.zip_code;
   normalized.endereco =
-    initial.endereco ??
+    source.endereco ??
     (addr.street as any) ??
-    (initial.address as any)?.street;
+  (source.address as any)?.street;
   normalized.numero =
-    initial.numero ??
+    source.numero ??
     ((addr.street_number as any) ||
       (addr.number as any) ||
-      (initial.address as any)?.street_number ||
-      (initial.address as any)?.number);
+  (source.address as any)?.street_number ||
+  (source.address as any)?.number);
   normalized.complemento =
-    initial.complemento ??
+    source.complemento ??
     (addr.complement as any) ??
-    (initial.address as any)?.complement;
+  (source.address as any)?.complement;
   normalized.estado =
-    initial.estado ?? (addr.state as any) ?? (initial.address as any)?.state;
+    source.estado ?? (addr.state as any) ?? (source.address as any)?.state;
 
   // Mapear variantes de área (usar casts para acessar possíveis aliases retornados pelo backend)
   normalized.usable_areas =
-    initial.usable_areas ??
+    safe.usable_areas ??
     (initial as any).area_util ??
     (initial as any).usable_areas ??
     undefined;
   normalized.total_areas =
-    initial.total_areas ??
+    safe.total_areas ??
     (initial as any).area_total ??
     (initial as any).total_areas ??
     undefined;
 
   // Mapeamento de vagas/garagem
   normalized.parking_spaces =
-    initial.parking_spaces ?? (initial as any).garage_spots ?? undefined;
+    safe.parking_spaces ?? (initial as any).garage_spots ?? undefined;
 
   // Imagens: garantir array de URLs
   (normalized as any).image_urls =
-    initial.image_urls ?? (initial as any).images ?? [];
+    safe.image_urls ?? (initial as any).images ?? [];
 
   // --- Novos mapeamentos para Empreendimento ---
   normalized.empreendimento_id =
@@ -206,34 +210,34 @@ export const normalizeInitialData = (
 
   // Campos específicos da unidade
   normalized.unit =
-    initial.unit ??
+    safe.unit ??
     (initial as any).unit ??
     (normalized as any).unit ?? undefined;
 
   normalized.block =
-    initial.block ??
+    safe.block ??
     (initial as any).block ??
     (normalized as any).block ?? undefined;
 
   normalized.unit_floor =
-    initial.unit_floor ??
+    safe.unit_floor ??
     (initial as any).unit_floor ??
     (normalized as any).unit_floor ?? undefined;
 
   // Tipo/categoria e características gerais do imóvel
   // Separar usage_type (RESIDENTIAL / COMMERCIAL) do property_type (APARTMENT / HOUSE / ...)
   normalized.usage_type =
-    initial.usage_type ?? (initial as any).usage_type ??
+    safe.usage_type ?? (initial as any).usage_type ??
     ((initial as any).usage_types && Array.isArray((initial as any).usage_types) ? (initial as any).usage_types[0] : undefined) ??
     (normalized as any).usage_type;
 
   normalized.property_type =
-    initial.property_type ?? (initial as any).type ?? (initial as any).propertyType ??
+    safe.property_type ?? (initial as any).type ?? (initial as any).propertyType ??
     (normalized as any).property_type;
-  normalized.category = initial.category ?? (initial as any).category ?? (normalized as any).category;
+  normalized.category = safe.category ?? (initial as any).category ?? (normalized as any).category;
 
   const feat =
-    initial.features ?? (initial as any).features ?? (initial as any).caracteristicas ?? [];
+    safe.features ?? (initial as any).features ?? (initial as any).caracteristicas ?? [];
   
   
   // Sempre definir features, mesmo que seja um array vazio (permite remover todas as características)
@@ -353,41 +357,41 @@ export const normalizeInitialData = (
 
   // ✅ NOVO: Normalizar property_standard (Classificação do Imóvel)
   normalized.property_standard =
-    initial.property_standard ?? (initial as any).property_standard ?? (normalized as any).property_standard;
+    safe.property_standard ?? (initial as any).property_standard ?? (normalized as any).property_standard;
 
   // ✅ NOVO: Normalizar accepts_financing e accepts_exchange (Facilidades de Negociação)
   normalized.accepts_financing =
-    initial.accepts_financing ?? (initial as any).accepts_financing ?? (normalized as any).accepts_financing;
+    safe.accepts_financing ?? (initial as any).accepts_financing ?? (normalized as any).accepts_financing;
   normalized.accepts_exchange =
-    initial.accepts_exchange ?? (initial as any).accepts_exchange ?? (normalized as any).accepts_exchange;
+    safe.accepts_exchange ?? (initial as any).accepts_exchange ?? (normalized as any).accepts_exchange;
   
   // ✅ NOVO: Normalizar detalhes de financiamento e permuta
   normalized.financing_details =
-    initial.financing_details ?? (initial as any).financing_details ?? (normalized as any).financing_details;
+    safe.financing_details ?? (initial as any).financing_details ?? (normalized as any).financing_details;
   normalized.exchange_details =
-    initial.exchange_details ?? (initial as any).exchange_details ?? (normalized as any).exchange_details;
+    safe.exchange_details ?? (initial as any).exchange_details ?? (normalized as any).exchange_details;
 
   // ✅ NOVO: Normalizar campos de IPTU e Condomínio
   normalized.condo_fee =
-    initial.condo_fee ?? (initial as any).condo_fee ?? (normalized as any).condo_fee;
+    safe.condo_fee ?? (initial as any).condo_fee ?? (normalized as any).condo_fee;
   normalized.condo_fee_exempt =
-    initial.condo_fee_exempt ?? (initial as any).condo_fee_exempt ?? (normalized as any).condo_fee_exempt;
+    safe.condo_fee_exempt ?? (initial as any).condo_fee_exempt ?? (normalized as any).condo_fee_exempt;
   normalized.iptu =
-    initial.iptu ?? (initial as any).iptu ?? (normalized as any).iptu;
+    safe.iptu ?? (initial as any).iptu ?? (normalized as any).iptu;
   normalized.iptu_exempt =
-    initial.iptu_exempt ?? (initial as any).iptu_exempt ?? (normalized as any).iptu_exempt;
+    safe.iptu_exempt ?? (initial as any).iptu_exempt ?? (normalized as any).iptu_exempt;
   normalized.iptu_period =
-    initial.iptu_period ?? (initial as any).iptu_period ?? (normalized as any).iptu_period;
+    safe.iptu_period ?? (initial as any).iptu_period ?? (normalized as any).iptu_period;
 
   // ✅ NOVO: Normalizar business_type (Modalidade de Negócio)
   normalized.business_type =
-    initial.business_type ?? (initial as any).business_type ?? (normalized as any).business_type;
+    safe.business_type ?? (initial as any).business_type ?? (normalized as any).business_type;
 
   // ✅ NOVO: Normalizar preços (price_sale, price_rent)
   normalized.price_sale =
-    initial.price_sale ?? (initial as any).price_sale ?? (initial as any).sale_price ?? (normalized as any).price_sale;
+    safe.price_sale ?? (initial as any).price_sale ?? (initial as any).sale_price ?? (normalized as any).price_sale;
   normalized.price_rent =
-    initial.price_rent ?? (initial as any).price_rent ?? (initial as any).rent_price ?? (normalized as any).price_rent;
+    safe.price_rent ?? (initial as any).price_rent ?? (initial as any).rent_price ?? (normalized as any).price_rent;
 
   return normalized;
 };

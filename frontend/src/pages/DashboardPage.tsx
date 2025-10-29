@@ -18,13 +18,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const STATUS_CATEGORY_STYLES: Record<string, string> = {
-  published: 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-700',
-  pipeline: 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-700',
-  problem: 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-700',
-  other: 'bg-gray-50 dark:bg-gray-950/20 border-gray-200 dark:border-gray-800',
-};
-
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<PropertyDashboardStats | null>(null);
