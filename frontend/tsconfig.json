@@ -23,8 +23,9 @@
     /* Path mapping */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@/lib/*": ["./src/lib/*"]
+      "@/*": ["src/*"],
+      "@/lib/*": ["src/lib/*"],
+      "@/lib/utils": ["src/lib/utils.ts"]
     }
   },
   "include": ["src"],
