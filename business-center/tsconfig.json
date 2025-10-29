@@ -23,11 +23,9 @@
     "noUncheckedIndexedAccess": true,
 
     /* Path mapping */
-    "baseUrl": ".",
+    "baseUrl": "./src",
     "paths": {
-      "@/*": ["src/*"],
-      "@/lib/*": ["src/lib/*"],
-      "@/lib/utils": ["src/lib/utils.ts"]
+      "@/*": ["*"]
     }
   },
   "include": ["src"],
