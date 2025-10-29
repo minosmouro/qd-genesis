@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1.6
+FROM python:3.11-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    POETRY_VIRTUALENVS_CREATE=false \
+    PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app
+
+# Dependências do sistema necessárias para psycopg2, pillow etc.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential libpq-dev curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Criar ambiente virtual para reduzir tamanho
+RUN python -m venv /opt/venv
+
+COPY requirements.txt ./
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt && rm -rf ~/.cache/pip
+
+COPY . ./
+
+# Usuário sem privilégios
+RUN useradd --create-home --shell /usr/sbin/nologin appuser && \
+    mkdir -p /var/log/gandalf && chown -R appuser:appuser /app /var/log/gandalf
+
+USER appuser
+
+ENV FLASK_ENV=production \
+    FLASK_APP=app:create_app() \
+    GUNICORN_CMD_ARGS="--bind 0.0.0.0:5000 --workers 3 --threads 2 --timeout 120 --graceful-timeout 30"
+
+EXPOSE 5000
+
+CMD ["gunicorn", "app:create_app()"]

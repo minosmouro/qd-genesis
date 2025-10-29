@@ -1,0 +1,1071 @@
+import React, { useState, useEffect } from 'react';
+import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
+import { authService } from '@/services/auth.service';
+
+const DEFAULT_DEVICE_ID = 'cmesm0ax000002a6mtvzsz0ad';
+
+const SettingsPage: React.FC = () => {
+  // Gandalf linking state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [deviceId, setDeviceId] = useState(DEFAULT_DEVICE_ID);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [otp, setOtp] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Import modal / progress state
+  const [importFilter, _setImportFilter] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importOnlyActive, setImportOnlyActive] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem('importOnlyActive');
+      return v === null ? true : v === 'true';
+    } catch {
+      return true;
+    }
+  });
+  const [importResult, setImportResult] = useState<any>(null);
+  const [importRawError, setImportRawError] = useState<any>(null);
+  const [showImportErrorDetails, setShowImportErrorDetails] = useState(false);
+  const [importCode, _setImportCode] = useState('');
+
+  // Estado para visualização do token CanalPro/Gandalf (mascarado) — NÃO persistir no client
+  const [maskedToken, setMaskedToken] = useState<string | null>(null);
+  const [maskedTokenLength, setMaskedTokenLength] = useState<number | null>(
+    null
+  );
+  const [loadingMaskedToken, setLoadingMaskedToken] = useState(false);
+
+  // Verifica se o usuário atual possui role 'admin' lendo o JWT (se disponível)
+  const isAdmin = (): boolean => {
+    try {
+      const raw =
+        localStorage.getItem('access_token') ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('auth_token');
+      if (!raw) return false;
+      const parts = raw.split('.');
+      if (parts.length < 2) return false;
+      const payload = JSON.parse(
+        atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
+      );
+      if (!payload) return false;
+      if (payload.role === 'admin' || payload.is_admin === true) return true;
+      if (Array.isArray(payload.roles) && payload.roles.includes('admin'))
+        return true;
+      if (
+        Array.isArray(payload.permissions) &&
+        payload.permissions.includes('admin')
+      )
+        return true;
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  // Data de remoção automática (7 dias a partir de agora) no formato YYYY-MM-DD
+  const removalDate = (() => {
+    try {
+      const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      return d.toISOString().slice(0, 10);
+    } catch {
+      return '2025-09-06';
+    }
+  })();
+
+  // Novo estado para controlar modal centralizado (sem 'appearance')
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'gandalf' | 'import' | null>(null);
+
+  useEffect(() => {
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const open = qs.get('open');
+      if (open === 'gandalf') {
+        setModalType('gandalf');
+        setModalOpen(true);
+        // remove param to avoid reopening on navigation
+        qs.delete('open');
+        const newSearch = qs.toString();
+        const newUrl =
+          window.location.pathname + (newSearch ? `?${newSearch}` : '');
+        window.history.replaceState({}, '', newUrl);
+      }
+    } catch (e) {
+      // noop
+    }
+  }, []);
+
+  const startLink = async () => {
+    setLoading(true);
+    setMessage(null);
+    setError(null);
+    setSessionId(null);
+    try {
+      const resp = await authService.startGandalfLogin({
+        email,
+        password,
+        device_id: deviceId,
+      });
+      if (resp?.needs_otp) {
+        setSessionId(resp.session_id || null);
+        setMessage('OTP necessário. Solicitando envio do código...');
+        
+        // Automaticamente solicita o OTP por email
+        try {
+          await authService.requestGandalfOtp({
+            session_id: resp.session_id,
+            email,
+            device_id: deviceId,
+          });
+          setMessage('Código OTP enviado por email. Informe o código para validar.');
+        } catch (otpErr: any) {
+          setError(`Erro ao solicitar OTP: ${otpErr?.message || String(otpErr)}`);
+        }
+      } else {
+        setMessage('Credenciais vinculadas com sucesso.');
+      }
+    } catch (err: any) {
+      setError(err?.message || String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const requestOtpAgain = async () => {
+    if (!sessionId) {
+      setError('session_id ausente. Inicie o fluxo novamente.');
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    setError(null);
+    try {
+      await authService.requestGandalfOtp({
+        session_id: sessionId,
+        email,
+        device_id: deviceId,
+      });
+      setMessage('Código OTP reenviado por email.');
+    } catch (err: any) {
+      setError(err?.message || String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const validateOtp = async () => {
+    if (!sessionId) {
+      setError('session_id ausente. Inicie o fluxo novamente.');
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    setError(null);
+    try {
+      await authService.validateGandalfLogin({
+        session_id: sessionId,
+        otp,
+        email,
+        device_id: deviceId,
+      });
+      setMessage('Credenciais vinculadas com sucesso.');
+      setSessionId(null);
+      setOtp('');
+      setPassword('');
+    } catch (err: any) {
+      setError(err?.message || String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Import helpers
+  // Função `openImportModal` removida — o modal de importação é aberto pelos botões dos cards na UI
+  const closeImportModal = () => {
+    if (isImporting) return; // evita fechar durante import
+    setModalOpen(false);
+    setModalType(null);
+  };
+
+  const animateProgressWhilePending = () => {
+    let progress = 0;
+    setImportProgress(0);
+    const iv = setInterval(() => {
+      progress = Math.min(95, progress + Math.floor(Math.random() * 7) + 3);
+      setImportProgress(progress);
+    }, 350);
+    return iv;
+  };
+
+  // Busca o token mascarado do backend (não persiste no client)
+  const loadMaskedTokenFromServer = async () => {
+    setLoadingMaskedToken(true);
+    setMessage(null);
+    setError(null);
+    setMaskedToken(null);
+    setMaskedTokenLength(null);
+    try {
+      const token =
+        localStorage.getItem('access_token') ||
+        localStorage.getItem('token') ||
+        '';
+      const resp = await fetch('/properties/debug/gandalf_token', {
+        method: 'GET',
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+          Accept: 'application/json',
+        },
+      });
+      if (resp.status === 401 || resp.status === 403) {
+        setError('Sem permissão para visualizar token mascarado (401/403).');
+        return;
+      }
+      if (!resp.ok) {
+        const text = await resp
+          .text()
+          .catch(() => 'Resposta inválida do servidor');
+        setError(`Erro ao carregar token: ${resp.status} — ${text}`);
+        return;
+      }
+      const data = await resp.json();
+      // espera { token_masked, token_length }
+      const masked = data?.token_masked || null;
+      const length = data?.token_length ?? null;
+      if (masked) setMaskedToken(masked);
+      if (length !== null && length !== undefined)
+        setMaskedTokenLength(Number(length));
+      setMessage(
+        'Token mascarado carregado (somente os últimos caracteres exibidos).'
+      );
+    } catch (err: any) {
+      setError(
+        'Falha ao carregar token mascarado: ' + (err?.message || String(err))
+      );
+    } finally {
+      setLoadingMaskedToken(false);
+    }
+  };
+
+  const copyMaskedToClipboard = async () => {
+    if (!maskedToken) return;
+    try {
+      await navigator.clipboard.writeText(maskedToken);
+      setMessage('Token mascarado copiado para a área de transferência.');
+    } catch {
+      setError('Não foi possível copiar o token mascarado.');
+    }
+  };
+
+  const startImportAll = async (onlyActive: boolean) => {
+    setIsImporting(true);
+    setImportMessage(null);
+    setImportError(null);
+    setImportRawError(null);
+    setShowImportErrorDetails(false);
+    const iv = animateProgressWhilePending();
+
+    // confirmação do usuário (ação destrutiva / demorada)
+    if (
+      !window.confirm(
+        'Deseja realmente iniciar a importação agora? Isso pode demorar e atualizar imóveis existentes.'
+      )
+    ) {
+      clearInterval(iv);
+      setIsImporting(false);
+      return;
+    }
+
+    try {
+      // Valida credenciais antes da importação
+      const isValid = await authService.validateGandalfCredentials();
+      if (!isValid) {
+        clearInterval(iv);
+        setImportError(
+          'Credenciais Gandalf inválidas ou expiradas. Configure credenciais válidas antes de importar.'
+        );
+        setImportProgress(100);
+        setIsImporting(false);
+        return;
+      }
+
+      const resp = await authService.importGandalfListings({
+        only_active: onlyActive,
+      });
+      setImportResult(resp || null);
+      clearInterval(iv);
+      setImportProgress(100);
+      setImportMessage(resp?.message || 'Importação finalizada com sucesso.');
+    } catch (err: any) {
+      clearInterval(iv);
+      setImportRawError(err);
+      setImportError(getFriendlyErrorMessage(err));
+      setImportProgress(100);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const startImportWithFilter = async () => {
+    let parsedFilter: any = undefined;
+    if (importFilter) {
+      try {
+        parsedFilter = JSON.parse(importFilter);
+      } catch (e) {
+        setImportError('Filtro inválido. Informe um JSON válido.');
+        return;
+      }
+    }
+
+    setIsImporting(true);
+    setImportMessage(null);
+    setImportError(null);
+    setImportRawError(null);
+    setShowImportErrorDetails(false);
+    const iv = animateProgressWhilePending();
+
+    // confirmação do usuário
+    if (
+      !window.confirm('Deseja realmente iniciar a importação com este filtro?')
+    ) {
+      clearInterval(iv);
+      setIsImporting(false);
+      return;
+    }
+
+    try {
+      // Valida credenciais antes da importação
+      const isValid = await authService.validateGandalfCredentials();
+      if (!isValid) {
+        clearInterval(iv);
+        setImportError(
+          'Credenciais Gandalf inválidas ou expiradas. Configure credenciais válidas antes de importar.'
+        );
+        setImportProgress(100);
+        setIsImporting(false);
+        return;
+      }
+
+      const resp = await authService.importGandalfListings({
+        filter: parsedFilter,
+        only_active: importOnlyActive,
+      });
+      setImportResult(resp || null);
+      clearInterval(iv);
+      setImportProgress(100);
+      setImportMessage(
+        resp?.message || 'Importação com filtro finalizada com sucesso.'
+      );
+    } catch (err: any) {
+      clearInterval(iv);
+      setImportRawError(err);
+      setImportError(getFriendlyErrorMessage(err));
+      setImportProgress(100);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const importByCode = async () => {
+    if (!importCode) {
+      setImportError('Informe o código/external_id do imóvel');
+      return;
+    }
+    setIsImporting(true);
+    setImportMessage(null);
+    setImportError(null);
+    setImportRawError(null);
+    setShowImportErrorDetails(false);
+    const iv = animateProgressWhilePending();
+
+    try {
+      // Valida credenciais antes da importação
+      const isValid = await authService.validateGandalfCredentials();
+      if (!isValid) {
+        clearInterval(iv);
+        setImportError(
+          'Credenciais Gandalf inválidas ou expiradas. Configure credenciais válidas antes de importar.'
+        );
+        setImportProgress(100);
+        setIsImporting(false);
+        return;
+      }
+
+      const resp = await authService.importGandalfOne(importCode);
+      setImportResult(resp || null);
+      clearInterval(iv);
+      setImportProgress(100);
+      setImportMessage(
+        resp?.message || 'Importação por código realizada com sucesso.'
+      );
+    } catch (err: any) {
+      clearInterval(iv);
+      setImportRawError(err);
+      setImportError(getFriendlyErrorMessage(err));
+      setImportProgress(100);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // Referências para funções não usadas ainda — evita TS6133 enquanto a UI não as expõe
+  void startImportWithFilter;
+  void importByCode;
+
+  // Helper para extrair mensagem de erro do axios/response ou do objeto ApiError retornado pelo api.ts
+  const extractServerMessage = (err: any): string | null => {
+    if (!err) return null;
+
+    // Caso o erro já seja o formato padronizado gerado em api.ts: { message, code, details }
+    if (!err.response && typeof err.message === 'string') {
+      let msg = err.message || null;
+      // Adiciona detalhes se existirem
+      if (err.details) {
+        try {
+          const details =
+            typeof err.details === 'string'
+              ? err.details
+              : JSON.stringify(err.details);
+          msg = msg ? `${msg} — ${details}` : details;
+        } catch {
+          msg = msg || null;
+        }
+      }
+      // Alguns backends retornam um campo `error` com info adicional
+      if (err.error) {
+        try {
+          const extra =
+            typeof err.error === 'string'
+              ? err.error
+              : JSON.stringify(err.error);
+          msg = msg ? `${msg} — ${extra}` : extra;
+        } catch {
+          // noop
+        }
+      }
+      return msg;
+    }
+
+    // Caso seja um AxiosError com response.data
+    if (err.response && err.response.data) {
+      const data = err.response.data;
+      if (typeof data === 'string') return data;
+      // Prioriza message do payload e anexa campos adicionais
+      if (data.message) {
+        let composed = data.message;
+        const extra = data.error || data.details || data.errors;
+        if (extra) {
+          try {
+            const extraStr =
+              typeof extra === 'string' ? extra : JSON.stringify(extra);
+            composed = `${composed} — ${extraStr}`;
+          } catch {
+            // noop
+          }
+        }
+        return composed;
+      }
+    }
+
+    // Fallback para qualquer message disponível
+    if (err.message) return err.message;
+    try {
+      return String(err);
+    } catch {
+      return null;
+    }
+  };
+
+  const isIntegrationCredsError = (msg: string | null) => {
+    return (
+      msg === 'No valid integration credentials found or failed to refresh' ||
+      (msg || '').includes('No valid integration credentials')
+    );
+  };
+
+  const isGandalf502Error = (err: any): boolean => {
+    // aceita ApiError, axios error e strings
+    try {
+      if (err?.response?.status === 502) return true;
+      const m = (err?.message || err) as string;
+      if (typeof m === 'string' && m.includes('502')) return true;
+    } catch {
+      // noop
+    }
+    return false;
+  };
+
+  const getFriendlyErrorMessage = (err: any): string => {
+    const serverMsg = extractServerMessage(err);
+
+    // Mensagens conhecidas do backend que merecem orientação específica
+    if (serverMsg) {
+      if (
+        serverMsg.includes('Failed to fetch listings') ||
+        serverMsg.includes('Failed to fetch') ||
+        serverMsg.includes('NoneType')
+      ) {
+        // Mensagem retornada pelo backend quando a integração Gandalf falha internamente
+        return `Erro ao buscar imóveis no Gandalf. ${serverMsg}. Verifique credenciais e configuração da integração.`;
+      }
+
+      if (isIntegrationCredsError(serverMsg)) {
+        return friendlyIntegrationCredsMessage;
+      }
+    }
+
+    if (isGandalf502Error(err)) {
+      return 'Erro de conexão com Gandalf (502). Verifique se suas credenciais estão válidas e tente novamente.';
+    }
+
+    return serverMsg || (err && err.message) || String(err);
+  };
+
+  const friendlyIntegrationCredsMessage =
+    'Nenhuma credencial válida encontrada ou falha ao renovar. Vincule as credenciais em "Vincular CanalPro" antes de importar.';
+
+  // Render helper para conteúdo do modal dependendo do tipo (removida ramificação 'appearance')
+  const renderModalBody = () => {
+    if (modalType === 'gandalf') {
+      return (
+        <div>
+          <h3 className="text-lg font-semibold mb-4">
+            Vincular CanalPro (Gandalf)
+          </h3>
+          <div className="grid grid-cols-1 gap-3 max-w-xl">
+            <label className="text-sm text-text-secondary">E-mail</label>
+            <input
+              className="p-2 rounded border bg-background"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="seu@exemplo.com"
+              type="email"
+            />
+
+            <label className="text-sm text-text-secondary">Senha</label>
+            <input
+              className="p-2 rounded border bg-background"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Senha da Conta CanalPro"
+              type="password"
+            />
+
+            <label className="text-sm text-text-secondary">Device ID</label>
+            <input
+              className="p-2 rounded border bg-background"
+              value={deviceId}
+              onChange={e => setDeviceId(e.target.value)}
+              placeholder={DEFAULT_DEVICE_ID}
+            />
+
+            <div className="flex items-center gap-2">
+              <Button onClick={startLink} disabled={loading}>
+                {loading ? 'Aguarde...' : 'Iniciar vinculação'}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setEmail('');
+                  setPassword('');
+                  setDeviceId(DEFAULT_DEVICE_ID);
+                  setMessage(null);
+                  setError(null);
+                  setSessionId(null);
+                }}
+              >
+                Limpar
+              </Button>
+            </div>
+
+            {sessionId && (
+              <div className="mt-4 border-t pt-4">
+                <label className="text-sm text-text-secondary">
+                  Código OTP
+                </label>
+                <input
+                  className="p-2 rounded border bg-background"
+                  value={otp}
+                  onChange={e => setOtp(e.target.value)}
+                  placeholder="Código recebido por e-mail"
+                />
+                <div className="flex items-center gap-2 mt-2">
+                  <Button onClick={validateOtp} disabled={loading}>
+                    {loading ? 'Validando...' : 'Validar OTP'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={requestOtpAgain}
+                    disabled={loading}
+                  >
+                    Reenviar OTP
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setSessionId(null);
+                      setOtp('');
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Status das credenciais */}
+            <div className="mt-4 p-3 border rounded bg-surface">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-text-primary">
+                  Status das credenciais:
+                </span>
+                <Button
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      const isValid =
+                        await authService.validateGandalfCredentials();
+                      if (isValid) {
+                        setMessage('✅ Credenciais válidas e funcionando!');
+                      } else {
+                        setError(
+                          '❌ Credenciais inválidas ou não configuradas.'
+                        );
+                      }
+                    } catch (err: any) {
+                      setError(
+                        'Erro ao validar credenciais: ' +
+                          (err.message || String(err))
+                      );
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  variant="secondary"
+                  size="sm"
+                  disabled={loading}
+                >
+                  {loading ? 'Verificando...' : 'Testar Credenciais'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Exibição do token armazenado (localStorage ou servidor) */}
+            {isAdmin() && (
+              <div className="mt-4 p-3 border rounded bg-surface">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-text-primary">
+                      Token CanalPro (mascarado)
+                    </span>
+                    <span className="text-xs px-2 py-1 bg-surface dark:bg-surface text-text-primary dark:text-text-primary rounded">
+                      Remover em: {removalDate}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={loadMaskedTokenFromServer}
+                      variant="secondary"
+                      size="sm"
+                      disabled={loadingMaskedToken}
+                    >
+                      {loadingMaskedToken
+                        ? 'Carregando...'
+                        : 'Buscar do servidor'}
+                    </Button>
+                    <Button
+                      onClick={copyMaskedToClipboard}
+                      variant="ghost"
+                      size="sm"
+                      disabled={!maskedToken}
+                    >
+                      Copiar (mascarado)
+                    </Button>
+                  </div>
+                </div>
+                <div
+                  className="mt-2 font-mono text-sm break-all bg-background rounded p-2"
+                  aria-hidden={false}
+                >
+                  {maskedToken || (
+                    <span className="text-text-secondary">
+                      Nenhum token mascarado carregado.
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 text-xs text-text-secondary">
+                  Últimos <strong>{maskedTokenLength ?? '—'}</strong> caracteres
+                  mostrados para debug. Token completo NÃO é exibido por
+                  segurança.
+                </div>
+              </div>
+            )}
+
+            {message && <p className="text-sm text-primary dark:text-primary">{message}</p>}
+            {error && <p className="text-sm text-danger dark:text-danger">{error}</p>}
+          </div>
+        </div>
+      );
+    }
+
+    if (modalType === 'import') {
+      return (
+        <div>
+          <h3 className="text-lg font-semibold mb-4">
+            Importar imóveis do CanalPro
+          </h3>
+
+          <div className="mb-4 p-3 border rounded bg-surface dark:bg-surface border-border">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-blue-600 font-medium">ℹ️ Importante:</span>
+              <span className="text-blue-800">
+                Configure e valide suas credenciais Gandalf antes de importar
+                imóveis.
+              </span>
+            </div>
+          </div>
+
+          <p className="text-text-secondary mb-3">
+            Importe anúncios do CanalPro para sua base. A ação normalmente é
+            executada uma única vez e foi simplificada para uso rápido pelo
+            corretor.
+          </p>
+
+          <div className="grid grid-cols-1 gap-3">
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={importOnlyActive}
+                  onChange={e => setImportOnlyActive(e.target.checked)}
+                  disabled={isImporting}
+                />
+                <span className="text-sm text-text-secondary">
+                  Importar apenas imóveis ativos
+                </span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => startImportAll(importOnlyActive)}
+                disabled={isImporting}
+              >
+                Importar
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={closeImportModal}
+                disabled={isImporting}
+              >
+                Fechar
+              </Button>
+            </div>
+
+            {/* Barra de progresso e mensagens de status */}
+            <div className="mt-4">
+              <div className="w-full h-3 rounded bg-border/40 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${importError ? 'bg-danger dark:bg-danger' : importProgress >= 100 ? 'bg-primary dark:bg-primary' : 'bg-primary/10 dark:bg-primary/10'}`}
+                  style={{ width: `${importProgress}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-2 text-sm">
+                <span className="font-medium">
+                  {isImporting
+                    ? 'Processando...'
+                    : importProgress >= 100
+                      ? 'Concluído'
+                      : `${importProgress}%`}
+                </span>
+                <span
+                  className={`${importError ? 'text-danger dark:text-danger' : importMessage ? 'text-primary dark:text-primary' : 'text-text-secondary dark:text-text-secondary'}`}
+                >
+                  {importError
+                    ? importError
+                    : importMessage
+                      ? importMessage
+                      : isImporting
+                        ? 'Importando...'
+                        : 'Pronto'}
+                </span>
+              </div>
+            </div>
+
+            <hr className="my-2" />
+
+            {/* Resultado detalhado */}
+            {importResult && (
+              <div className="mt-4 p-3 bg-background rounded border border-border">
+                <h4 className="font-semibold text-text-primary mb-2">
+                  Resultado da importação
+                </h4>
+
+                {/* Resumo em cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
+                  <div className="p-3 bg-surface dark:bg-surface rounded shadow-sm text-center border border-border">
+                    <div className="text-xs text-text-secondary">Inseridos</div>
+                    <div className="text-xl font-semibold">
+                      {importResult.inserted ?? 0}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-surface dark:bg-surface rounded shadow-sm text-center border border-border">
+                    <div className="text-xs text-text-secondary">
+                      Atualizados
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {importResult.updated ?? 0}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-surface dark:bg-surface rounded shadow-sm text-center border border-border">
+                    <div className="text-xs text-text-secondary">Pulados</div>
+                    <div className="text-xl font-semibold">
+                      {importResult.skipped ?? 0}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-surface dark:bg-surface rounded shadow-sm text-center border border-border">
+                    <div className="text-xs text-text-secondary">
+                      Total no portal
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {importResult.total_listings ?? '-'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Erros detalhados (tabela) */}
+                <div>
+                  <h5 className="font-medium text-text-primary mb-2">
+                    Erros detalhados
+                  </h5>
+
+                  {Array.isArray(importResult.errors) &&
+                  importResult.errors.length > 0 ? (
+                    <div className="overflow-auto rounded border">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-background text-text-secondary">
+                          <tr>
+                            <th className="px-3 py-2 text-left">External ID</th>
+                            <th className="px-3 py-2 text-left">Mensagem</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {importResult.errors.map((err: any, idx: number) => {
+                            // err pode ser string ou objeto { external_id, error }
+                            const external =
+                              err && typeof err === 'object'
+                                ? err.external_id ||
+                                  err.externalId ||
+                                  err.externalId
+                                : null;
+                            const message =
+                              err && typeof err === 'object'
+                                ? err.error ||
+                                  err.message ||
+                                  JSON.stringify(err)
+                                : typeof err === 'string'
+                                  ? err
+                                  : JSON.stringify(err);
+                            return (
+                              <tr
+                                key={idx}
+                                className="odd:bg-background even:bg-surface dark:odd:bg-background dark:even:bg-surface"
+                              >
+                                <td className="px-3 py-2 align-top">
+                                  {external || (
+                                    <span className="text-text-secondary">
+                                      -
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 align-top">
+                                  <pre className="whitespace-pre-wrap text-xs m-0">
+                                    {message}
+                                  </pre>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="p-3 text-sm text-text-secondary">
+                      Nenhum erro reportado durante a importação.
+                    </div>
+                  )}
+
+                  {/* JSON bruto expandível */}
+                  {importRawError && (
+                    <div className="mt-3">
+                      <button
+                        className="text-xs text-primary dark:text-primary hover:underline"
+                        onClick={() => setShowImportErrorDetails(s => !s)}
+                      >
+                        {showImportErrorDetails
+                          ? 'Ocultar detalhes da resposta'
+                          : 'Ver detalhes da resposta'}
+                      </button>
+
+                      {showImportErrorDetails && (
+                        <pre className="mt-2 p-2 bg-surface dark:bg-surface text-xs overflow-auto rounded border border-border max-h-48">
+                          {typeof importRawError === 'string'
+                            ? importRawError
+                            : JSON.stringify(
+                                importRawError,
+                                Object.getOwnPropertyNames(importRawError),
+                                2
+                              )}
+                        </pre>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-6 text-text-primary">
+        Configurações
+      </h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Card: Vincular CanalPro */}
+        <div className="bg-surface p-6 rounded-lg shadow-md flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl font-semibold mb-2 text-text-primary">
+              Vincular CanalPro (Gandalf)
+            </h2>
+            <p className="text-text-secondary mb-4">
+              Adicione ou atualize credenciais do CanalPro para permitir
+              integrações e importações.
+            </p>
+          </div>
+          <div className="mt-4">
+            <Button
+              onClick={() => {
+                setModalType('gandalf');
+                setModalOpen(true);
+              }}
+            >
+              Configurar
+            </Button>
+          </div>
+        </div>
+
+        {/* Card: Importar imóveis */}
+        <div className="bg-surface p-6 rounded-lg shadow-md flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl font-semibold mb-2 text-text-primary">
+              Importar imóveis do CanalPro
+            </h2>
+            <p className="text-text-secondary mb-4">
+              Importe anúncios do CanalPro para sua base. Possui opções de
+              filtro e import por código.
+            </p>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Button
+              onClick={() => {
+                setModalType('import');
+                setModalOpen(true);
+              }}
+            >
+              Configurar
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setModalType('import');
+                setModalOpen(true);
+              }}
+            >
+              Importar por código
+            </Button>
+          </div>
+        </div>
+
+        {/* Card: Testar captura de credenciais (novo) */}
+        <div className="bg-surface p-6 rounded-lg shadow-md flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl font-semibold mb-2 text-text-primary">
+              Testar captura de credenciais
+            </h2>
+            <p className="text-text-secondary mb-4">
+              Busque o token mascarado que o backend armazena para o provedor
+              Gandalf. Útil para confirmar que o sistema está capturando
+              credenciais corretamente.
+            </p>
+            <div className="mt-2">
+              <div className="font-mono text-sm break-all bg-background rounded p-2 min-h-[40px]">
+                {loadingMaskedToken
+                  ? 'Carregando...'
+                  : maskedToken || (
+                      <span className="text-text-secondary">
+                        Nenhum token carregado.
+                      </span>
+                    )}
+              </div>
+              {maskedTokenLength !== null && (
+                <div className="mt-2 text-xs text-text-secondary">
+                  Últimos <strong>{maskedTokenLength}</strong> caracteres
+                  mostrados.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 flex gap-2">
+            <Button onClick={loadMaskedTokenFromServer} variant="secondary">
+              Buscar token mascarado
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={copyMaskedToClipboard}
+              disabled={!maskedToken}
+            >
+              Copiar (mascarado)
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal centralizado que reutiliza renderModalBody */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => {
+          if (!isImporting) {
+            setModalOpen(false);
+            setModalType(null);
+          }
+        }}
+        title={
+          modalType === 'gandalf'
+            ? 'Vincular CanalPro'
+            : modalType === 'import'
+              ? 'Importar imóveis'
+              : undefined
+        }
+      >
+        {renderModalBody()}
+      </Modal>
+    </div>
+  );
+};
+
+export default SettingsPage;

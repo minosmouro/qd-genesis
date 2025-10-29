@@ -1,0 +1,190 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&display=swap');
+@import './styles/design-tokens.css';
+@import './styles/animations.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light Mode - Clean and Professional */
+  :root {
+    /* Backgrounds */
+    --background: 0 0% 100%;           /* Pure white #FFFFFF */
+    --surface: 220 13% 97%;            /* Very light gray #F7F8F9 */
+    --surface-hover: 220 13% 94%;      /* Slightly darker on hover #EEEFF1 */
+    
+    /* Brand Colors */
+    --primary: 212 49% 23%;            /* Brand Navy #1E3958 */
+    --primary-hover: 212 49% 20%;      /* Darker navy on hover */
+    --accent: 45 100% 62%;             /* Brand Yellow #FFD23F */
+    --accent-hover: 46 78% 53%;        /* Darker yellow on hover #E6BD2D */
+    
+    /* Text Colors */
+    --text-primary: 220 13% 21%;       /* Dark gray for main text #2E333C */
+    --text-secondary: 220 9% 46%;      /* Medium gray for secondary text #6A717F */
+    --text-tertiary: 220 9% 64%;       /* Light gray for tertiary text */
+    
+    /* Borders & Dividers */
+    --border: 214 32% 91%;             /* Light border #E0E7EF */
+    --border-hover: 214 32% 85%;       /* Darker border on hover */
+    
+    /* Semantic Colors */
+    --success: 142 71% 45%;            /* Green #22C55E */
+    --warning: 38 92% 50%;             /* Orange #F59E0B */
+    --error: 0 84% 60%;                /* Red #EF4444 */
+    --info: 199 89% 48%;               /* Blue #0EA5E9 */
+    
+    /* Layout */
+    --header-height: 64px;
+    --cockpit-height: 80px;
+    --sidebar-width: 16rem;
+    --aside-width: 24rem; /* Aumentado de 20rem para 24rem (384px) - Mais espaço para Score + Preview */
+  }
+
+  /* Dark Mode - Modern and Comfortable */
+  [data-theme='dark'] {
+    /* Backgrounds */
+    --background: 222 47% 11%;         /* Very dark blue #0E1629 */
+    --surface: 222 47% 15%;            /* Slightly lighter #141D33 */
+    --surface-hover: 222 47% 18%;      /* Lighter on hover #182543 */
+    
+    /* Brand Colors - Adjusted for dark mode */
+    --primary: 211 46% 45%;            /* Lighter navy for visibility #4A7BA7 */
+    --primary-hover: 211 46% 50%;      /* Even lighter on hover */
+    --accent: 45 100% 62%;             /* Keep yellow bright #FFD23F */
+    --accent-hover: 47 100% 70%;       /* Brighter yellow on hover #FFE066 */
+    
+    /* Text Colors */
+    --text-primary: 0 0% 98%;          /* Almost white #FAFAFA */
+    --text-secondary: 220 9% 70%;      /* Light gray #A8ADB8 */
+    --text-tertiary: 220 9% 55%;       /* Medium gray for tertiary */
+    
+    /* Borders & Dividers */
+    --border: 217 33% 27%;             /* Dark border #2E3F5B */
+    --border-hover: 217 33% 32%;       /* Lighter border on hover */
+    
+    /* Semantic Colors - Adjusted for dark mode */
+    --success: 142 71% 50%;            /* Brighter green */
+    --warning: 38 92% 55%;             /* Brighter orange */
+    --error: 0 84% 65%;                /* Brighter red */
+    --info: 199 89% 55%;               /* Brighter blue */
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-text-primary antialiased;
+    height: 100%;
+    /* overflow: hidden; removido para permitir scroll */
+  }
+
+  /* Smooth scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+    transition: background-color 0.2s;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-text-secondary;
+  }
+
+  /* Selection styling */
+  ::selection {
+    @apply bg-primary/20 text-text-primary;
+  }
+
+  /* Removida aplicação global de borda para evitar repaints e comportamento visual estranho. */
+
+  /* Ajuste dinâmico do conteúdo principal para respeitar header + cockpit sticky */
+  main {
+    padding-top: 0;
+    transition: padding-top 160ms ease;
+  }
+
+  /* Para páginas específicas com Cockpit */
+  .page-with-cockpit {
+    padding-top: calc(var(--cockpit-height, 80px) + 10px);
+    padding-bottom: 80px; /* Espaço para paginação sticky */
+    margin-top: -1rem; /* Compensa o espaçamento do main */
+    border-top: 1px solid transparent; /* Garante continuidade visual */
+  }
+}
+
+@layer components {
+  /* Layout global para módulos com sidebar fixo e painel lateral */
+  .module-layout {
+    @apply fixed inset-0 flex bg-background text-text-primary;
+  }
+
+  .module-layout-content {
+    @apply flex flex-1;
+    padding-top: calc(
+      var(--header-height) + 80px
+    ); /* Header + Cockpit padronizado */
+    padding-left: var(--sidebar-width);
+  }
+
+  .module-main {
+    @apply flex-1 flex flex-col min-w-0 relative;
+  }
+
+  .module-main-content {
+    @apply flex-1 overflow-auto;
+    padding-bottom: 4rem; /* Espaço para footer fixo (48px + padding) */
+    padding-left: 20px;
+    padding-right: 20px;
+    /* Removido padding-top - já compensado pelo module-layout-content */
+  }
+
+  .module-footer {
+    @apply fixed bottom-0 left-0 md:left-64 h-16 bg-surface border-t border-border flex items-center justify-center text-sm text-text-secondary;
+    right: var(--aside-width); /* Respeita sidebar direito */
+    padding: 1rem 1.5rem; /* 16px vertical, 24px horizontal */
+    z-index: 10;
+  }
+
+  .module-aside {
+    @apply flex-shrink-0 flex flex-col bg-surface border-l border-border;
+    width: var(--aside-width);
+    height: calc(100vh - var(--header-height) - 80px - 64px); /* Header + Cockpit + Footer (64px) */
+    margin-bottom: 64px; /* Altura do footer atualizada */
+    padding: 1.5rem; /* 24px para mais espaço ✅ */
+    z-index: 15;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+}
+
+@layer utilities {
+  /* Utilitários customizados */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Backdrop blur forte para modais */
+  .modal-backdrop-blur {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}

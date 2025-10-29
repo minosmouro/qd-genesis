@@ -1,0 +1,151 @@
+version: "3.9"
+
+x-backend-env: &backend-env
+  env_file:
+    - ./.env.production
+  environment:
+    DATABASE_URL: postgresql://${DATABASE_USER}:${DATABASE_PASSWORD_URLENCODED:-${DATABASE_PASSWORD}}@postgres:5432/${DATABASE_NAME}
+    REDIS_URL: redis://redis:6379/0
+    SECRET_KEY: ${SECRET_KEY}
+    FERNET_KEY: ${FERNET_KEY}
+    TZ: ${TZ}
+  networks:
+    - quadradois_net
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    env_file:
+      - ./.env.production
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - quadradois_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - quadradois_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:1.9.0
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - quadradois_net
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    image: quadradois/backend:${VERSION:-latest}
+    <<: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "5000"
+
+  worker:
+    image: quadradois/backend:${VERSION:-latest}
+    <<: *backend-env
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: ["celery", "-A", "celery_app", "worker", "--loglevel=info", "--concurrency=4", "-Q", "celery,refresh_scheduler"]
+
+  beat:
+    image: quadradois/backend:${VERSION:-latest}
+    <<: *backend-env
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: ["celery", "-A", "celery_app", "beat", "--loglevel=info", "--scheduler", "celery.beat.PersistentScheduler"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: ${FRONTEND_VITE_API_URL:-https://api.quadradois.com.br}
+    image: quadradois/frontend:${VERSION:-latest}
+    env_file:
+      - ./.env.production
+    networks:
+      - quadradois_net
+    restart: unless-stopped
+
+  business_center:
+    build:
+      context: ./business-center
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: ${BUSINESS_CENTER_VITE_API_URL:-https://api.quadradois.com.br}
+    image: quadradois/business-center:${VERSION:-latest}
+    env_file:
+      - ./.env.production
+    networks:
+      - quadradois_net
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: quadradois/nginx:${VERSION:-latest}
+    depends_on:
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
+      business_center:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - nginx_logs:/var/log/nginx
+    networks:
+      - quadradois_net
+    restart: unless-stopped
+
+networks:
+  quadradois_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:
+  nginx_logs:

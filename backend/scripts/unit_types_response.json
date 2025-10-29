@@ -1,0 +1,132 @@
+{
+  "data": {
+    "unitTypes": {
+      "items": [
+        {
+          "name": "UnitType_NONE",
+          "singular": "Não informado",
+          "plural": "Não informados",
+          "unitSubTypes": null
+        },
+        {
+          "name": "APARTMENT",
+          "singular": "Apartamento",
+          "plural": "Apartamentos",
+          "unitSubTypes": null
+        },
+        {
+          "name": "TWO_STORY_HOUSE",
+          "singular": "Sobrado",
+          "plural": "Sobrados",
+          "unitSubTypes": null
+        },
+        {
+          "name": "FLAT",
+          "singular": "Flat",
+          "plural": "Flats",
+          "unitSubTypes": null
+        },
+        {
+          "name": "KITNET",
+          "singular": "Kitnet/Conjugado",
+          "plural": "Kitnets/Conjugados",
+          "unitSubTypes": null
+        },
+        {
+          "name": "HOME",
+          "singular": "Casa",
+          "plural": "Casas",
+          "unitSubTypes": null
+        },
+        {
+          "name": "CONDOMINIUM",
+          "singular": "Casa de condomínio",
+          "plural": "Casas de condomínio",
+          "unitSubTypes": null
+        },
+        {
+          "name": "PENTHOUSE",
+          "singular": "Cobertura",
+          "plural": "Coberturas",
+          "unitSubTypes": null
+        },
+        {
+          "name": "RESIDENTIAL_ALLOTMENT_LAND",
+          "singular": "Lote/Terreno",
+          "plural": "Lotes/Terrenos",
+          "unitSubTypes": null
+        },
+        {
+          "name": "COMMERCIAL_ALLOTMENT_LAND",
+          "singular": "Lote/Terreno",
+          "plural": "Lotes/Terrenos",
+          "unitSubTypes": null
+        },
+        {
+          "name": "OFFICE",
+          "singular": "Sala/Conjunto",
+          "plural": "Salas/Conjuntos",
+          "unitSubTypes": null
+        },
+        {
+          "name": "SHED_DEPOSIT_WAREHOUSE",
+          "singular": "Galpão/Depósito/Armazém",
+          "plural": "Galpões/Depósitos/Armazéns",
+          "unitSubTypes": null
+        },
+        {
+          "name": "COMMERCIAL_BUILDING",
+          "singular": "Prédio/Edificio inteiro",
+          "plural": "Prédios/Edificios inteiros",
+          "unitSubTypes": null
+        },
+        {
+          "name": "CLINIC",
+          "singular": "Consultório",
+          "plural": "Consultórios",
+          "unitSubTypes": null
+        },
+        {
+          "name": "BUSINESS",
+          "singular": "Ponto comercial/Loja/Box",
+          "plural": "Pontos comerciais/Lojas/Boxes",
+          "unitSubTypes": null
+        },
+        {
+          "name": "COUNTRY_HOUSE",
+          "singular": "Chácara",
+          "plural": "Chácaras",
+          "unitSubTypes": null
+        },
+        {
+          "name": "FARM",
+          "singular": "Fazenda/Sítio/Chácara",
+          "plural": "Fazendas/Sítios/Chácaras",
+          "unitSubTypes": null
+        },
+        {
+          "name": "COMMERCIAL_PROPERTY",
+          "singular": "Imóvel comercial",
+          "plural": "Imóveis comerciais",
+          "unitSubTypes": null
+        },
+        {
+          "name": "RESIDENTIAL_BUILDING",
+          "singular": "Edifício residencial",
+          "plural": "Edifícios residenciais",
+          "unitSubTypes": null
+        },
+        {
+          "name": "BUILDING",
+          "singular": "Prédio/Edifício inteiro",
+          "plural": "Prédios/Edifícios inteiros",
+          "unitSubTypes": null
+        }
+      ]
+    }
+  },
+  "extensions": {
+    "appVersion": "v6.14.11",
+    "timing": 2
+  }
+}
